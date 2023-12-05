@@ -1,15 +1,65 @@
-Source: template-repository
-Section: unknown
+Source: golang-github-prometheus-common
+Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Uploaders: Martina Ferrari <tina@debian.org>,
+           Anthony Fok <foka@debian.org>,
+           Lucas Kanashiro <kanashiro@debian.org>,
+           Daniel Swarbrick <dswarbrick@debian.org>,
+Section: golang
+Testsuite: autopkgtest-pkg-go
 Priority: optional
-Maintainer: Tsic404 <liuheng@deepin.org>
-Build-Depends: debhelper (>= 11)
-Standards-Version: 4.1.3
-Homepage: https://github.com/deepin-community/template-repository
-#Vcs-Browser: https://salsa.debian.org/debian/deepin-community-template-repository
-#Vcs-Git: https://salsa.debian.org/debian/deepin-community-template-repository.git
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-golang,
+               golang-any,
+               golang-github-aws-aws-sdk-go-dev,
+               golang-github-go-kit-log-dev,
+               golang-github-julienschmidt-httprouter-dev,
+               golang-github-mwitkow-go-conntrack-dev,
+               golang-github-prometheus-client-golang-dev (>= 1.17.0-2~),
+               golang-github-prometheus-client-model-dev (>= 0.4.0),
+               golang-golang-x-net-dev,
+               golang-golang-x-oauth2-dev,
+               golang-google-protobuf-dev,
+               golang-gopkg-alecthomas-kingpin.v2-dev,
+               golang-gopkg-yaml.v2-dev (>= 2.2.1),
+               golang-protobuf-extensions-dev,
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Vcs-Browser: https://salsa.debian.org/go-team/packages/golang-github-prometheus-common
+Vcs-Git: https://salsa.debian.org/go-team/packages/golang-github-prometheus-common.git
+Homepage: https://github.com/prometheus/common
+XS-Go-Import-Path: github.com/prometheus/common
 
-Package: template-repository
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Package: golang-github-prometheus-common-dev
+Architecture: all
+Multi-Arch: foreign
+Depends: golang-github-aws-aws-sdk-go-dev,
+         golang-github-go-kit-log-dev,
+         golang-github-julienschmidt-httprouter-dev,
+         golang-github-mwitkow-go-conntrack-dev,
+         golang-github-prometheus-client-golang-dev (>= 1.17.0-2~),
+         golang-github-prometheus-client-model-dev (>= 0.4.0),
+         golang-golang-x-net-dev,
+         golang-golang-x-oauth2-dev,
+         golang-google-protobuf-dev,
+         golang-gopkg-alecthomas-kingpin.v2-dev,
+         golang-gopkg-yaml.v2-dev (>= 2.2.1),
+         golang-protobuf-extensions-dev,
+         ${misc:Depends},
+Breaks: golang-github-armon-go-metrics-dev (<< 0.3.4-3~),
+        golang-github-prometheus-client-golang (<< 1.17.0-2~),
+        prometheus-alertmanager (<< 0.22.0~),
+Description: common libraries for Prometheus components
+ This package includes:
+ .
+  * github.com/prometheus/common/config: Common configuration structures.
+  * github.com/prometheus/common/expfmt: Decoding and encoding for the
+    exposition format.
+  * github.com/prometheus/common/model: Shared data structures.
+  * github.com/prometheus/common/promlog: Defines standardised ways to
+    initialize Go kit loggers across Prometheus components.
+  * github.com/prometheus/common/route: A routing wrapper around
+    https://github.com/julienschmidt/httprouter using `context.Context`.
+  * github.com/prometheus/common/server: Common servers.
+  * github.com/prometheus/common/sigv4: Provides a http.RoundTripper that
+    signs requests using Amazon's Signature Verification V4 signing procedure.
+  * github.com/prometheus/common/version: Version information and metrics.

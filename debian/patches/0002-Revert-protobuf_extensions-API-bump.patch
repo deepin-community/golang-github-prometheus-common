@@ -1,0 +1,54 @@
+From: Daniel Swarbrick <dswarbrick@debian.org>
+Date: Mon, 13 Nov 2023 13:08:10 +0100
+Subject: Revert protobuf_extensions API bump
+
+Forwarded: not-needed
+Last-Update: 2023-11-13
+
+golang_protobuf_extensions/v2 is not yet packaged in Debian, but since
+there are no user-facing changes (yet), we can revert this for now.
+---
+ expfmt/bench_test.go | 2 +-
+ expfmt/decode.go     | 2 +-
+ expfmt/encode.go     | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/expfmt/bench_test.go b/expfmt/bench_test.go
+index 3d7d68e..00c1940 100644
+--- a/expfmt/bench_test.go
++++ b/expfmt/bench_test.go
+@@ -20,7 +20,7 @@ import (
+ 	"os"
+ 	"testing"
+ 
+-	"github.com/matttproud/golang_protobuf_extensions/v2/pbutil"
++	"github.com/matttproud/golang_protobuf_extensions/pbutil"
+ 
+ 	dto "github.com/prometheus/client_model/go"
+ )
+diff --git a/expfmt/decode.go b/expfmt/decode.go
+index 0ca86a3..9063978 100644
+--- a/expfmt/decode.go
++++ b/expfmt/decode.go
+@@ -22,7 +22,7 @@ import (
+ 
+ 	dto "github.com/prometheus/client_model/go"
+ 
+-	"github.com/matttproud/golang_protobuf_extensions/v2/pbutil"
++	"github.com/matttproud/golang_protobuf_extensions/pbutil"
+ 	"github.com/prometheus/common/model"
+ )
+ 
+diff --git a/expfmt/encode.go b/expfmt/encode.go
+index ca21406..7f611ff 100644
+--- a/expfmt/encode.go
++++ b/expfmt/encode.go
+@@ -18,7 +18,7 @@ import (
+ 	"io"
+ 	"net/http"
+ 
+-	"github.com/matttproud/golang_protobuf_extensions/v2/pbutil"
++	"github.com/matttproud/golang_protobuf_extensions/pbutil"
+ 	"github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg"
+ 	"google.golang.org/protobuf/encoding/prototext"
+ 
