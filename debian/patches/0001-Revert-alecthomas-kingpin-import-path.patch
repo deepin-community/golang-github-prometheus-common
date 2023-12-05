@@ -1,0 +1,28 @@
+From: Daniel Swarbrick <dswarbrick@debian.org>
+Date: Mon, 13 Nov 2023 13:04:55 +0100
+Subject: Revert alecthomas/kingpin import path
+
+Forwarded: not-needed
+Last-Update: 2023-06-14
+
+Newer versions of alecthomas/kingpin use a different import path. This patch
+can be dropped once the golang-gopkg-alecthomas-kingpin.v2-dev package is
+updated and provides the new import path.
+---
+ promlog/flag/flag.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/promlog/flag/flag.go b/promlog/flag/flag.go
+index c25d818..ec55008 100644
+--- a/promlog/flag/flag.go
++++ b/promlog/flag/flag.go
+@@ -14,8 +14,8 @@
+ package flag
+ 
+ import (
+-	kingpin "github.com/alecthomas/kingpin/v2"
+ 	"github.com/prometheus/common/promlog"
++	kingpin "gopkg.in/alecthomas/kingpin.v2"
+ )
+ 
+ // LevelFlagName is the canonical flag name to configure the allowed log level

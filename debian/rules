@@ -1,4 +1,14 @@
 #!/usr/bin/make -f
 
+# Remove the version package, to avoid circular dependency. These are copied
+# later using dh_install.
+export DH_GOLANG_EXCLUDES := github.com/prometheus/common/version
+export DH_GOLANG_EXCLUDES_ALL := 0
+
 %:
-	dh $@
+	dh $@ --buildsystem=golang
+
+override_dh_strip_nondeterminism:
+	# Prevent modification of upstream testdata gzipped files, etc., which
+	# could otherwise cause autopkgtest failures.
+	dh_strip_nondeterminism --exclude=/assets/testdata/
