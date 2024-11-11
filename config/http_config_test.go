@@ -35,7 +35,8 @@ import (
 	"testing"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -81,11 +82,11 @@ var invalidHTTPClientConfigs = []struct {
 	},
 	{
 		httpClientConfigFile: "testdata/http.conf.basic-auth.too-much.bad.yaml",
-		errMsg:               "at most one of basic_auth password & password_file must be configured",
+		errMsg:               "at most one of basic_auth password, password_file & password_ref must be configured",
 	},
 	{
 		httpClientConfigFile: "testdata/http.conf.basic-auth.bad-username.yaml",
-		errMsg:               "at most one of basic_auth username & username_file must be configured",
+		errMsg:               "at most one of basic_auth username, username_file & username_ref must be configured",
 	},
 	{
 		httpClientConfigFile: "testdata/http.conf.mix-bearer-and-creds.bad.yaml",
@@ -109,15 +110,11 @@ var invalidHTTPClientConfigs = []struct {
 	},
 	{
 		httpClientConfigFile: "testdata/http.conf.oauth2-secret-and-file-set.bad.yml",
-		errMsg:               "at most one of oauth2 client_secret & client_secret_file must be configured",
+		errMsg:               "at most one of oauth2 client_secret, client_secret_file & client_secret_ref must be configured",
 	},
 	{
 		httpClientConfigFile: "testdata/http.conf.oauth2-no-client-id.bad.yaml",
 		errMsg:               "oauth2 client_id must be configured",
-	},
-	{
-		httpClientConfigFile: "testdata/http.conf.oauth2-no-client-secret.bad.yaml",
-		errMsg:               "either oauth2 client_secret or client_secret_file must be configured",
 	},
 	{
 		httpClientConfigFile: "testdata/http.conf.oauth2-no-token-url.bad.yaml",
@@ -134,6 +131,10 @@ var invalidHTTPClientConfigs = []struct {
 	{
 		httpClientConfigFile: "testdata/http.conf.no-proxy-without-proxy-url.bad.yaml",
 		errMsg:               "if no_proxy is configured, proxy_url must also be configured",
+	},
+	{
+		httpClientConfigFile: "testdata/http.conf.headers-reserved.bad.yaml",
+		errMsg:               `setting header "User-Agent" is not allowed`,
 	},
 }
 
@@ -156,7 +157,8 @@ func newTestServer(handler func(w http.ResponseWriter, r *http.Request)) (*httpt
 		Certificates: make([]tls.Certificate, 1),
 		RootCAs:      rootCAs,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    rootCAs}
+		ClientCAs:    rootCAs,
+	}
 	testServer.TLS.Certificates[0] = serverCertificate
 
 	testServer.StartTLS()
@@ -165,7 +167,7 @@ func newTestServer(handler func(w http.ResponseWriter, r *http.Request)) (*httpt
 }
 
 func TestNewClientFromConfig(t *testing.T) {
-	var newClientValidConfig = []struct {
+	newClientValidConfig := []struct {
 		clientConfig HTTPClientConfig
 		handler      func(w http.ResponseWriter, r *http.Request)
 	}{
@@ -176,24 +178,28 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: true},
+					InsecureSkipVerify: true,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, ExpectedMessage)
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				TLSConfig: TLSConfig{
 					CAFile:             TLSCAChainPath,
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, ExpectedMessage)
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				BearerToken: BearerToken,
 				TLSConfig: TLSConfig{
@@ -201,7 +207,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				bearer := r.Header.Get("Authorization")
@@ -212,7 +219,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				BearerTokenFile: BearerTokenFile,
 				TLSConfig: TLSConfig{
@@ -220,7 +228,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				bearer := r.Header.Get("Authorization")
@@ -231,7 +240,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				Authorization: &Authorization{Credentials: BearerToken},
 				TLSConfig: TLSConfig{
@@ -239,7 +249,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				bearer := r.Header.Get("Authorization")
@@ -250,7 +261,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				Authorization: &Authorization{CredentialsFile: AuthorizationCredentialsFile, Type: AuthorizationType},
 				TLSConfig: TLSConfig{
@@ -258,7 +270,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				bearer := r.Header.Get("Authorization")
@@ -269,7 +282,31 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
+			clientConfig: HTTPClientConfig{
+				Authorization: &Authorization{
+					Type: AuthorizationType,
+				},
+				TLSConfig: TLSConfig{
+					CAFile:             TLSCAChainPath,
+					CertFile:           ClientCertificatePath,
+					KeyFile:            ClientKeyNoPassPath,
+					ServerName:         "",
+					InsecureSkipVerify: false,
+				},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				bearer := r.Header.Get("Authorization")
+				if strings.TrimSpace(bearer) != AuthorizationType {
+					fmt.Fprintf(w, "The expected Bearer Authorization (%s) differs from the obtained Bearer Authorization (%s)",
+						AuthorizationType, bearer)
+				} else {
+					fmt.Fprint(w, ExpectedMessage)
+				}
+			},
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				Authorization: &Authorization{
 					Credentials: AuthorizationCredentials,
@@ -280,7 +317,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				bearer := r.Header.Get("Authorization")
@@ -291,7 +329,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				Authorization: &Authorization{
 					CredentialsFile: BearerTokenFile,
@@ -301,7 +340,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				bearer := r.Header.Get("Authorization")
@@ -312,7 +352,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				BasicAuth: &BasicAuth{
 					Username: ExpectedUsername,
@@ -323,7 +364,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				username, password, ok := r.BasicAuth()
@@ -337,7 +379,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, ExpectedMessage)
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				FollowRedirects: true,
 				TLSConfig: TLSConfig{
@@ -345,7 +388,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
@@ -357,7 +401,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					fmt.Fprint(w, "It should follow the redirect.")
 				}
 			},
-		}, {
+		},
+		{
 			clientConfig: HTTPClientConfig{
 				FollowRedirects: false,
 				TLSConfig: TLSConfig{
@@ -365,7 +410,8 @@ func TestNewClientFromConfig(t *testing.T) {
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
@@ -381,6 +427,46 @@ func TestNewClientFromConfig(t *testing.T) {
 		{
 			clientConfig: HTTPClientConfig{
 				OAuth2: &OAuth2{
+					ClientID: "ExpectedUsername",
+					TLSConfig: TLSConfig{
+						CAFile:             TLSCAChainPath,
+						CertFile:           ClientCertificatePath,
+						KeyFile:            ClientKeyNoPassPath,
+						ServerName:         "",
+						InsecureSkipVerify: false,
+					},
+				},
+				TLSConfig: TLSConfig{
+					CAFile:             TLSCAChainPath,
+					CertFile:           ClientCertificatePath,
+					KeyFile:            ClientKeyNoPassPath,
+					ServerName:         "",
+					InsecureSkipVerify: false,
+				},
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/token":
+					res, _ := json.Marshal(oauth2TestServerResponse{
+						AccessToken: ExpectedAccessToken,
+						TokenType:   "Bearer",
+					})
+					w.Header().Add("Content-Type", "application/json")
+					_, _ = w.Write(res)
+
+				default:
+					authorization := r.Header.Get("Authorization")
+					if authorization != "Bearer "+ExpectedAccessToken {
+						fmt.Fprintf(w, "Expected Authorization header %q, got %q", "Bearer "+ExpectedAccessToken, authorization)
+					} else {
+						fmt.Fprint(w, ExpectedMessage)
+					}
+				}
+			},
+		},
+		{
+			clientConfig: HTTPClientConfig{
+				OAuth2: &OAuth2{
 					ClientID:     "ExpectedUsername",
 					ClientSecret: "ExpectedPassword",
 					TLSConfig: TLSConfig{
@@ -388,14 +474,16 @@ func TestNewClientFromConfig(t *testing.T) {
 						CertFile:           ClientCertificatePath,
 						KeyFile:            ClientKeyNoPassPath,
 						ServerName:         "",
-						InsecureSkipVerify: false},
+						InsecureSkipVerify: false,
+					},
 				},
 				TLSConfig: TLSConfig{
 					CAFile:             TLSCAChainPath,
 					CertFile:           ClientCertificatePath,
 					KeyFile:            ClientKeyNoPassPath,
 					ServerName:         "",
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
@@ -420,46 +508,48 @@ func TestNewClientFromConfig(t *testing.T) {
 	}
 
 	for _, validConfig := range newClientValidConfig {
-		testServer, err := newTestServer(validConfig.handler)
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		defer testServer.Close()
+		t.Run("", func(t *testing.T) {
+			testServer, err := newTestServer(validConfig.handler)
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			defer testServer.Close()
 
-		if validConfig.clientConfig.OAuth2 != nil {
-			// We don't have access to the test server's URL when configuring the test cases,
-			// so it has to be specified here.
-			validConfig.clientConfig.OAuth2.TokenURL = testServer.URL + "/token"
-		}
+			if validConfig.clientConfig.OAuth2 != nil {
+				// We don't have access to the test server's URL when configuring the test cases,
+				// so it has to be specified here.
+				validConfig.clientConfig.OAuth2.TokenURL = testServer.URL + "/token"
+			}
 
-		err = validConfig.clientConfig.Validate()
-		if err != nil {
-			t.Fatal(err.Error())
-		}
-		client, err := NewClientFromConfig(validConfig.clientConfig, "test")
-		if err != nil {
-			t.Errorf("Can't create a client from this config: %+v", validConfig.clientConfig)
-			continue
-		}
+			err = validConfig.clientConfig.Validate()
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			client, err := NewClientFromConfig(validConfig.clientConfig, "test")
+			if err != nil {
+				t.Errorf("Can't create a client from this config: %+v", validConfig.clientConfig)
+				return
+			}
 
-		response, err := client.Get(testServer.URL)
-		if err != nil {
-			t.Errorf("Can't connect to the test server using this config: %+v: %v", validConfig.clientConfig, err)
-			continue
-		}
+			response, err := client.Get(testServer.URL)
+			if err != nil {
+				t.Errorf("Can't connect to the test server using this config: %+v: %v", validConfig.clientConfig, err)
+				return
+			}
 
-		message, err := io.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			t.Errorf("Can't read the server response body using this config: %+v", validConfig.clientConfig)
-			continue
-		}
+			message, err := io.ReadAll(response.Body)
+			response.Body.Close()
+			if err != nil {
+				t.Errorf("Can't read the server response body using this config: %+v", validConfig.clientConfig)
+				return
+			}
 
-		trimMessage := strings.TrimSpace(string(message))
-		if ExpectedMessage != trimMessage {
-			t.Errorf("The expected message (%s) differs from the obtained message (%s) using this config: %+v",
-				ExpectedMessage, trimMessage, validConfig.clientConfig)
-		}
+			trimMessage := strings.TrimSpace(string(message))
+			if ExpectedMessage != trimMessage {
+				t.Errorf("The expected message (%s) differs from the obtained message (%s) using this config: %+v",
+					ExpectedMessage, trimMessage, validConfig.clientConfig)
+			}
+		})
 	}
 }
 
@@ -508,7 +598,7 @@ func TestProxyConfiguration(t *testing.T) {
 }
 
 func TestNewClientFromInvalidConfig(t *testing.T) {
-	var newClientInvalidConfig = []struct {
+	newClientInvalidConfig := []struct {
 		clientConfig HTTPClientConfig
 		errorMsg     string
 	}{
@@ -516,17 +606,19 @@ func TestNewClientFromInvalidConfig(t *testing.T) {
 			clientConfig: HTTPClientConfig{
 				TLSConfig: TLSConfig{
 					CAFile:             MissingCA,
-					InsecureSkipVerify: true},
+					InsecureSkipVerify: true,
+				},
 			},
-			errorMsg: fmt.Sprintf("unable to load specified CA cert %s:", MissingCA),
+			errorMsg: fmt.Sprintf("unable to read CA cert: unable to read file %s", MissingCA),
 		},
 		{
 			clientConfig: HTTPClientConfig{
 				TLSConfig: TLSConfig{
 					CAFile:             InvalidCA,
-					InsecureSkipVerify: true},
+					InsecureSkipVerify: true,
+				},
 			},
-			errorMsg: fmt.Sprintf("unable to use specified CA cert %s", InvalidCA),
+			errorMsg: fmt.Sprintf("unable to use specified CA cert file %s", InvalidCA),
 		},
 	}
 
@@ -588,7 +680,8 @@ func TestMissingBearerAuthFile(t *testing.T) {
 			CertFile:           ClientCertificatePath,
 			KeyFile:            ClientKeyNoPassPath,
 			ServerName:         "",
-			InsecureSkipVerify: false},
+			InsecureSkipVerify: false,
+		},
 	}
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		bearer := r.Header.Get("Authorization")
@@ -616,7 +709,7 @@ func TestMissingBearerAuthFile(t *testing.T) {
 		t.Fatal("No error is returned here")
 	}
 
-	if !strings.Contains(err.Error(), "unable to read authorization credentials file missing/bearer.token: open missing/bearer.token: no such file or directory") {
+	if !strings.Contains(err.Error(), "unable to read authorization credentials: unable to read file missing/bearer.token: open missing/bearer.token: no such file or directory") {
 		t.Fatal("wrong error message being returned")
 	}
 }
@@ -635,7 +728,7 @@ func TestBearerAuthRoundTripper(t *testing.T) {
 	}, nil, nil)
 
 	// Normal flow.
-	bearerAuthRoundTripper := NewAuthorizationCredentialsRoundTripper("Bearer", BearerToken, fakeRoundTripper)
+	bearerAuthRoundTripper := NewAuthorizationCredentialsRoundTripper("Bearer", NewInlineSecret(BearerToken), fakeRoundTripper)
 	request, _ := http.NewRequest("GET", "/hitchhiker", nil)
 	request.Header.Set("User-Agent", "Douglas Adams mind")
 	_, err := bearerAuthRoundTripper.RoundTrip(request)
@@ -644,7 +737,7 @@ func TestBearerAuthRoundTripper(t *testing.T) {
 	}
 
 	// Should honor already Authorization header set.
-	bearerAuthRoundTripperShouldNotModifyExistingAuthorization := NewAuthorizationCredentialsRoundTripper("Bearer", newBearerToken, fakeRoundTripper)
+	bearerAuthRoundTripperShouldNotModifyExistingAuthorization := NewAuthorizationCredentialsRoundTripper("Bearer", NewInlineSecret(newBearerToken), fakeRoundTripper)
 	request, _ = http.NewRequest("GET", "/hitchhiker", nil)
 	request.Header.Set("Authorization", ExpectedBearer)
 	_, err = bearerAuthRoundTripperShouldNotModifyExistingAuthorization.RoundTrip(request)
@@ -663,7 +756,7 @@ func TestBearerAuthFileRoundTripper(t *testing.T) {
 	}, nil, nil)
 
 	// Normal flow.
-	bearerAuthRoundTripper := NewAuthorizationCredentialsFileRoundTripper("Bearer", BearerTokenFile, fakeRoundTripper)
+	bearerAuthRoundTripper := NewAuthorizationCredentialsRoundTripper("Bearer", &FileSecret{file: BearerTokenFile}, fakeRoundTripper)
 	request, _ := http.NewRequest("GET", "/hitchhiker", nil)
 	request.Header.Set("User-Agent", "Douglas Adams mind")
 	_, err := bearerAuthRoundTripper.RoundTrip(request)
@@ -672,7 +765,7 @@ func TestBearerAuthFileRoundTripper(t *testing.T) {
 	}
 
 	// Should honor already Authorization header set.
-	bearerAuthRoundTripperShouldNotModifyExistingAuthorization := NewAuthorizationCredentialsFileRoundTripper("Bearer", MissingBearerTokenFile, fakeRoundTripper)
+	bearerAuthRoundTripperShouldNotModifyExistingAuthorization := NewAuthorizationCredentialsRoundTripper("Bearer", &FileSecret{file: MissingBearerTokenFile}, fakeRoundTripper)
 	request, _ = http.NewRequest("GET", "/hitchhiker", nil)
 	request.Header.Set("Authorization", ExpectedBearer)
 	_, err = bearerAuthRoundTripperShouldNotModifyExistingAuthorization.RoundTrip(request)
@@ -759,7 +852,7 @@ func TestTLSConfigEmpty(t *testing.T) {
 }
 
 func TestTLSConfigInvalidCA(t *testing.T) {
-	var invalidTLSConfig = []struct {
+	invalidTLSConfig := []struct {
 		configTLSConfig TLSConfig
 		errorMessage    string
 	}{
@@ -769,24 +862,29 @@ func TestTLSConfigInvalidCA(t *testing.T) {
 				CertFile:           "",
 				KeyFile:            "",
 				ServerName:         "",
-				InsecureSkipVerify: false},
-			errorMessage: fmt.Sprintf("unable to load specified CA cert %s:", MissingCA),
-		}, {
+				InsecureSkipVerify: false,
+			},
+			errorMessage: fmt.Sprintf("unable to read CA cert: unable to read file %s", MissingCA),
+		},
+		{
 			configTLSConfig: TLSConfig{
 				CAFile:             "",
 				CertFile:           MissingCert,
 				KeyFile:            ClientKeyNoPassPath,
 				ServerName:         "",
-				InsecureSkipVerify: false},
-			errorMessage: fmt.Sprintf("unable to read specified client cert (%s):", MissingCert),
-		}, {
+				InsecureSkipVerify: false,
+			},
+			errorMessage: fmt.Sprintf("unable to read specified client cert: unable to read file %s", MissingCert),
+		},
+		{
 			configTLSConfig: TLSConfig{
 				CAFile:             "",
 				CertFile:           ClientCertificatePath,
 				KeyFile:            MissingKey,
 				ServerName:         "",
-				InsecureSkipVerify: false},
-			errorMessage: fmt.Sprintf("unable to read specified client key (%s):", MissingKey),
+				InsecureSkipVerify: false,
+			},
+			errorMessage: fmt.Sprintf("unable to read specified client key: unable to read file %s", MissingKey),
 		},
 		{
 			configTLSConfig: TLSConfig{
@@ -795,8 +893,9 @@ func TestTLSConfigInvalidCA(t *testing.T) {
 				CertFile:           ClientCertificatePath,
 				KeyFile:            ClientKeyNoPassPath,
 				ServerName:         "",
-				InsecureSkipVerify: false},
-			errorMessage: "at most one of cert and cert_file must be configured",
+				InsecureSkipVerify: false,
+			},
+			errorMessage: "at most one of cert, cert_file & cert_ref must be configured",
 		},
 		{
 			configTLSConfig: TLSConfig{
@@ -805,7 +904,8 @@ func TestTLSConfigInvalidCA(t *testing.T) {
 				Key:                Secret(readFile(t, ClientKeyNoPassPath)),
 				KeyFile:            ClientKeyNoPassPath,
 				ServerName:         "",
-				InsecureSkipVerify: false},
+				InsecureSkipVerify: false,
+			},
 			errorMessage: "at most one of key and key_file must be configured",
 		},
 	}
@@ -837,14 +937,11 @@ func TestBasicAuthNoPassword(t *testing.T) {
 		t.Fatalf("Error casting to basic auth transport, %v", client.Transport)
 	}
 
-	if rt.username != "user" {
-		t.Errorf("Bad HTTP client username: %s", rt.username)
+	if username, _ := rt.username.Fetch(context.Background()); username != "user" {
+		t.Errorf("Bad HTTP client username: %s", username)
 	}
-	if string(rt.password) != "" {
-		t.Errorf("Expected empty HTTP client password: %s", rt.password)
-	}
-	if string(rt.passwordFile) != "" {
-		t.Errorf("Expected empty HTTP client passwordFile: %s", rt.passwordFile)
+	if rt.password != nil {
+		t.Errorf("Expected empty HTTP client password")
 	}
 }
 
@@ -863,14 +960,11 @@ func TestBasicAuthNoUsername(t *testing.T) {
 		t.Fatalf("Error casting to basic auth transport, %v", client.Transport)
 	}
 
-	if rt.username != "" {
-		t.Errorf("Got unexpected username: %s", rt.username)
+	if rt.username != nil {
+		t.Errorf("Got unexpected username")
 	}
-	if string(rt.password) != "secret" {
-		t.Errorf("Unexpected HTTP client password: %s", string(rt.password))
-	}
-	if string(rt.passwordFile) != "" {
-		t.Errorf("Expected empty HTTP client passwordFile: %s", rt.passwordFile)
+	if password, _ := rt.password.Fetch(context.Background()); password != "secret" {
+		t.Errorf("Unexpected HTTP client password: %s", password)
 	}
 }
 
@@ -889,14 +983,81 @@ func TestBasicAuthPasswordFile(t *testing.T) {
 		t.Fatalf("Error casting to basic auth transport, %v", client.Transport)
 	}
 
-	if rt.username != "user" {
-		t.Errorf("Bad HTTP client username: %s", rt.username)
+	if username, _ := rt.username.Fetch(context.Background()); username != "user" {
+		t.Errorf("Bad HTTP client username: %s", username)
 	}
-	if string(rt.password) != "" {
-		t.Errorf("Bad HTTP client password: %s", rt.password)
+	if password, _ := rt.password.Fetch(context.Background()); password != "foobar" {
+		t.Errorf("Bad HTTP client password: %s", password)
 	}
-	if string(rt.passwordFile) != "testdata/basic-auth-password" {
-		t.Errorf("Bad HTTP client passwordFile: %s", rt.passwordFile)
+}
+
+type secretManager struct {
+	data map[string]string
+}
+
+func (m *secretManager) Fetch(ctx context.Context, secretRef string) (string, error) {
+	secretData, ok := m.data[secretRef]
+	if !ok {
+		return "", fmt.Errorf("unknown secret %s", secretRef)
+	}
+	return secretData, nil
+}
+
+func TestBasicAuthSecretManager(t *testing.T) {
+	cfg, _, err := LoadHTTPConfigFile("testdata/http.conf.basic-auth.ref.yaml")
+	if err != nil {
+		t.Fatalf("Error loading HTTP client config: %v", err)
+	}
+	manager := secretManager{
+		data: map[string]string{
+			"admin": "user",
+			"pass":  "foobar",
+		},
+	}
+	client, err := NewClientFromConfig(*cfg, "test", WithSecretManager(&manager))
+	if err != nil {
+		t.Fatalf("Error creating HTTP Client: %v", err)
+	}
+
+	rt, ok := client.Transport.(*basicAuthRoundTripper)
+	if !ok {
+		t.Fatalf("Error casting to basic auth transport, %v", client.Transport)
+	}
+
+	if username, _ := rt.username.Fetch(context.Background()); username != "user" {
+		t.Errorf("Bad HTTP client username: %s", username)
+	}
+	if password, _ := rt.password.Fetch(context.Background()); password != "foobar" {
+		t.Errorf("Bad HTTP client password: %s", password)
+	}
+}
+
+func TestBasicAuthSecretManagerNotFound(t *testing.T) {
+	cfg, _, err := LoadHTTPConfigFile("testdata/http.conf.basic-auth.ref.yaml")
+	if err != nil {
+		t.Fatalf("Error loading HTTP client config: %v", err)
+	}
+	manager := secretManager{
+		data: map[string]string{
+			"admin1": "user",
+			"foobar": "pass",
+		},
+	}
+	client, err := NewClientFromConfig(*cfg, "test", WithSecretManager(&manager))
+	if err != nil {
+		t.Fatalf("Error creating HTTP Client: %v", err)
+	}
+
+	rt, ok := client.Transport.(*basicAuthRoundTripper)
+	if !ok {
+		t.Fatalf("Error casting to basic auth transport, %v", client.Transport)
+	}
+
+	if _, err := rt.username.Fetch(context.Background()); !strings.Contains(err.Error(), "unknown secret admin") {
+		t.Errorf("Unexpected error message: %s", err)
+	}
+	if _, err := rt.password.Fetch(context.Background()); !strings.Contains(err.Error(), "unknown secret pass") {
+		t.Errorf("Unexpected error message: %s", err)
 	}
 }
 
@@ -915,14 +1076,11 @@ func TestBasicUsernameFile(t *testing.T) {
 		t.Fatalf("Error casting to basic auth transport, %v", client.Transport)
 	}
 
-	if rt.username != "" {
-		t.Errorf("Bad HTTP client username: %s", rt.username)
+	if username, _ := rt.username.Fetch(context.Background()); username != "testuser" {
+		t.Errorf("Bad HTTP client username: %s", username)
 	}
-	if string(rt.usernameFile) != "testdata/basic-auth-username" {
-		t.Errorf("Bad HTTP client usernameFile: %s", rt.usernameFile)
-	}
-	if string(rt.passwordFile) != "testdata/basic-auth-password" {
-		t.Errorf("Bad HTTP client passwordFile: %s", rt.passwordFile)
+	if password, _ := rt.password.Fetch(context.Background()); password != "foobar" {
+		t.Errorf("Bad HTTP client passwordFile: %s", password)
 	}
 }
 
@@ -949,12 +1107,12 @@ func getCertificateBlobs(t *testing.T) map[string][]byte {
 	return bs
 }
 
-func writeCertificate(bs map[string][]byte, src string, dst string) {
+func writeCertificate(bs map[string][]byte, src, dst string) {
 	b, ok := bs[src]
 	if !ok {
 		panic(fmt.Sprintf("Couldn't find %q in bs", src))
 	}
-	if err := os.WriteFile(dst, b, 0664); err != nil {
+	if err := os.WriteFile(dst, b, 0o664); err != nil {
 		panic(err)
 	}
 }
@@ -1045,7 +1203,8 @@ func TestTLSRoundTripper(t *testing.T) {
 			CAFile:             ca,
 			CertFile:           cert,
 			KeyFile:            key,
-			InsecureSkipVerify: false},
+			InsecureSkipVerify: false,
+		},
 	}
 
 	var c *http.Client
@@ -1150,7 +1309,7 @@ func TestTLSRoundTripper_Inline(t *testing.T) {
 			certText: readFile(t, ClientCertificatePath),
 			keyText:  readFile(t, ClientKeyNoPassPath),
 
-			errMsg: "unable to use inline CA cert",
+			errMsg: "unable to use specified CA cert inline",
 		},
 		{
 			// Invalid cert.
@@ -1181,7 +1340,8 @@ func TestTLSRoundTripper_Inline(t *testing.T) {
 					CertFile:           tc.certFile,
 					Key:                Secret(tc.keyText),
 					KeyFile:            tc.keyFile,
-					InsecureSkipVerify: false},
+					InsecureSkipVerify: false,
+				},
 			}
 
 			c, err := NewClientFromConfig(cfg, "test")
@@ -1242,7 +1402,8 @@ func TestTLSRoundTripperRaces(t *testing.T) {
 			CAFile:             ca,
 			CertFile:           cert,
 			KeyFile:            key,
-			InsecureSkipVerify: false},
+			InsecureSkipVerify: false,
+		},
 	}
 
 	var c *http.Client
@@ -1308,7 +1469,7 @@ func TestTLSRoundTripperRaces(t *testing.T) {
 func TestHideHTTPClientConfigSecrets(t *testing.T) {
 	c, _, err := LoadHTTPConfigFile("testdata/http.conf.good.yml")
 	if err != nil {
-		t.Errorf("Error parsing %s: %s", "testdata/http.conf.good.yml", err)
+		t.Fatalf("Error parsing %s: %s", "testdata/http.conf.good.yml", err)
 	}
 
 	// String method must not reveal authentication credentials.
@@ -1343,7 +1504,7 @@ func TestInvalidHTTPConfigs(t *testing.T) {
 	for _, ee := range invalidHTTPClientConfigs {
 		_, _, err := LoadHTTPConfigFile(ee.httpClientConfigFile)
 		if err == nil {
-			t.Error("Expected error with config but got none")
+			t.Errorf("Expected error with config %q but got none", ee.httpClientConfigFile)
 			continue
 		}
 		if !strings.Contains(err.Error(), ee.errMsg) {
@@ -1378,7 +1539,9 @@ func NewRoundTripCheckRequest(checkRequest func(*http.Request), theResponse *htt
 		checkRequest: checkRequest,
 		roundTrip: roundTrip{
 			theResponse: theResponse,
-			theError:    theError}}
+			theError:    theError,
+		},
+	}
 }
 
 type oauth2TestServerResponse struct {
@@ -1386,8 +1549,23 @@ type oauth2TestServerResponse struct {
 	TokenType   string `json:"token_type"`
 }
 
-func TestOAuth2(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+type testOAuthServer struct {
+	tokenTS *httptest.Server
+	ts      *httptest.Server
+}
+
+// newTestOAuthServer returns a new test server with the expected base64 encoded client ID and secret.
+func newTestOAuthServer(t testing.TB, expectedAuth *string) testOAuthServer {
+	var previousAuth string
+	tokenTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if auth != *expectedAuth {
+			t.Fatalf("bad auth, expected %s, got %s", *expectedAuth, auth)
+		}
+		if auth == previousAuth {
+			t.Fatal("token endpoint called twice")
+		}
+		previousAuth = auth
 		res, _ := json.Marshal(oauth2TestServerResponse{
 			AccessToken: "12345",
 			TokenType:   "Bearer",
@@ -1395,43 +1573,122 @@ func TestOAuth2(t *testing.T) {
 		w.Header().Add("Content-Type", "application/json")
 		_, _ = w.Write(res)
 	}))
-	defer ts.Close()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer 12345" {
+			t.Fatalf("bad auth, expected %s, got %s", "Bearer 12345", auth)
+		}
+		fmt.Fprintln(w, "Hello, client")
+	}))
+	return testOAuthServer{
+		tokenTS: tokenTS,
+		ts:      ts,
+	}
+}
 
-	var yamlConfig = fmt.Sprintf(`
+func (s *testOAuthServer) url() string {
+	return s.ts.URL
+}
+
+func (s *testOAuthServer) tokenURL() string {
+	return s.tokenTS.URL
+}
+
+func (s *testOAuthServer) close() {
+	s.tokenTS.Close()
+	s.ts.Close()
+}
+
+func TestOAuth2(t *testing.T) {
+	var expectedAuth string
+	ts := newTestOAuthServer(t, &expectedAuth)
+	defer ts.close()
+
+	yamlConfig := fmt.Sprintf(`
 client_id: 1
 client_secret: 2
 scopes:
  - A
  - B
-token_url: %s/token
+token_url: %s
 endpoint_params:
  hi: hello
-`, ts.URL)
+`, ts.tokenURL())
 	expectedConfig := OAuth2{
 		ClientID:       "1",
 		ClientSecret:   "2",
 		Scopes:         []string{"A", "B"},
 		EndpointParams: map[string]string{"hi": "hello"},
-		TokenURL:       fmt.Sprintf("%s/token", ts.URL),
+		TokenURL:       ts.tokenURL(),
 	}
 
 	var unmarshalledConfig OAuth2
-	err := yaml.Unmarshal([]byte(yamlConfig), &unmarshalledConfig)
-	if err != nil {
+	if err := yaml.Unmarshal([]byte(yamlConfig), &unmarshalledConfig); err != nil {
 		t.Fatalf("Expected no error unmarshalling yaml, got %v", err)
 	}
 	if !reflect.DeepEqual(unmarshalledConfig, expectedConfig) {
 		t.Fatalf("Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 	}
 
-	rt := NewOAuth2RoundTripper(&expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	secret := NewInlineSecret(string(expectedConfig.ClientSecret))
+	rt := NewOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
 
 	client := http.Client{
 		Transport: rt,
 	}
-	resp, _ := client.Get(ts.URL)
+
+	// Default secret.
+	expectedAuth = "Basic MToy"
+	resp, err := client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	authorization := resp.Request.Header.Get("Authorization")
+	if authorization != "Bearer 12345" {
+		t.Fatalf("Expected authorization header to be 'Bearer', got '%s'", authorization)
+	}
+
+	// Making a second request with the same secret should not re-call the token API.
+	_, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty secret.
+	expectedAuth = "Basic MTo="
+	expectedConfig.ClientSecret = ""
+	resp, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	authorization = resp.Request.Header.Get("Authorization")
+	if authorization != "Bearer 12345" {
+		t.Fatalf("Expected authorization header to be 'Bearer 12345', got '%s'", authorization)
+	}
+
+	// Making a second request with the same secret should not re-call the token API.
+	resp, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Update secret.
+	expectedAuth = "Basic MToxMjM0NTY3"
+	expectedConfig.ClientSecret = "1234567"
+	_, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Making a second request with the same secret should not re-call the token API.
+	_, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	authorization = resp.Request.Header.Get("Authorization")
 	if authorization != "Bearer 12345" {
 		t.Fatalf("Expected authorization header to be 'Bearer 12345', got '%s'", authorization)
 	}
@@ -1480,34 +1737,36 @@ func TestOAuth2UserAgent(t *testing.T) {
 	}
 }
 
-func TestOAuth2WithFile(t *testing.T) {
-	var expectedAuth *string
-	var previousAuth string
-	tokenTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if auth != *expectedAuth {
-			t.Fatalf("bad auth, expected %s, got %s", *expectedAuth, auth)
-		}
-		if auth == previousAuth {
-			t.Fatal("token endpoint called twice")
-		}
-		previousAuth = auth
-		res, _ := json.Marshal(oauth2TestServerResponse{
-			AccessToken: "12345",
-			TokenType:   "Bearer",
-		})
-		w.Header().Add("Content-Type", "application/json")
-		_, _ = w.Write(res)
-	}))
-	defer tokenTS.Close()
+func TestHost(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if auth != "Bearer 12345" {
-			t.Fatalf("bad auth, expected %s, got %s", "Bearer 12345", auth)
+		if r.Host != "localhost.localdomain" {
+			t.Fatalf("Expected Host header in request to be 'localhost.localdomain', got '%s'", r.Host)
 		}
-		fmt.Fprintln(w, "Hello, client")
+
+		w.Header().Add("Content-Type", "application/json")
 	}))
 	defer ts.Close()
+
+	config := DefaultHTTPClientConfig
+
+	rt, err := NewRoundTripperFromConfig(config, "test_host", WithHost("localhost.localdomain"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client := http.Client{
+		Transport: rt,
+	}
+	_, err = client.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOAuth2WithFile(t *testing.T) {
+	var expectedAuth string
+	ts := newTestOAuthServer(t, &expectedAuth)
+	defer ts.close()
 
 	secretFile, err := os.CreateTemp("", "oauth2_secret")
 	if err != nil {
@@ -1515,7 +1774,7 @@ func TestOAuth2WithFile(t *testing.T) {
 	}
 	defer os.Remove(secretFile.Name())
 
-	var yamlConfig = fmt.Sprintf(`
+	yamlConfig := fmt.Sprintf(`
 client_id: 1
 client_secret_file: %s
 scopes:
@@ -1524,13 +1783,13 @@ scopes:
 token_url: %s
 endpoint_params:
  hi: hello
-`, secretFile.Name(), tokenTS.URL)
+`, secretFile.Name(), ts.tokenURL())
 	expectedConfig := OAuth2{
 		ClientID:         "1",
 		ClientSecretFile: secretFile.Name(),
 		Scopes:           []string{"A", "B"},
 		EndpointParams:   map[string]string{"hi": "hello"},
-		TokenURL:         tokenTS.URL,
+		TokenURL:         ts.tokenURL(),
 	}
 
 	var unmarshalledConfig OAuth2
@@ -1542,46 +1801,64 @@ endpoint_params:
 		t.Fatalf("Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 	}
 
-	rt := NewOAuth2RoundTripper(&expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	secret := NewFileSecret(expectedConfig.ClientSecretFile)
+	rt := NewOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
 
 	client := http.Client{
 		Transport: rt,
 	}
 
-	tk := "Basic MToxMjM0NTY="
-	expectedAuth = &tk
-	if _, err := secretFile.Write([]byte("123456")); err != nil {
-		t.Fatal(err)
-	}
-	resp, err := client.Get(ts.URL)
+	// Empty secret file.
+	expectedAuth = "Basic MTo="
+	resp, err := client.Get(ts.url())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	authorization := resp.Request.Header.Get("Authorization")
 	if authorization != "Bearer 12345" {
+		t.Fatalf("Expected authorization header to be 'Bearer', got '%s'", authorization)
+	}
+
+	// Making a second request with the same file content should not re-call the token API.
+	_, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// File populated.
+	expectedAuth = "Basic MToxMjM0NTY="
+	if _, err := secretFile.Write([]byte("123456")); err != nil {
+		t.Fatal(err)
+	}
+	resp, err = client.Get(ts.url())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	authorization = resp.Request.Header.Get("Authorization")
+	if authorization != "Bearer 12345" {
 		t.Fatalf("Expected authorization header to be 'Bearer 12345', got '%s'", authorization)
 	}
 
 	// Making a second request with the same file content should not re-call the token API.
-	resp, err = client.Get(ts.URL)
+	resp, err = client.Get(ts.url())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tk = "Basic MToxMjM0NTY3"
-	expectedAuth = &tk
+	// Update file.
+	expectedAuth = "Basic MToxMjM0NTY3"
 	if _, err := secretFile.Write([]byte("7")); err != nil {
 		t.Fatal(err)
 	}
-
-	_, err = client.Get(ts.URL)
+	_, err = client.Get(ts.url())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Making a second request with the same file content should not re-call the token API.
-	_, err = client.Get(ts.URL)
+	_, err = client.Get(ts.url())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1730,6 +2007,89 @@ func TestMarshalURLWithSecret(t *testing.T) {
 	}
 }
 
+func TestHTTPClientConfig_Marshal(t *testing.T) {
+	proxyURL, err := url.Parse("http://localhost:8080")
+	require.NoError(t, err)
+
+	t.Run("without HTTP headers", func(t *testing.T) {
+		config := &HTTPClientConfig{
+			ProxyConfig: ProxyConfig{
+				ProxyURL: URL{proxyURL},
+			},
+		}
+
+		t.Run("YAML", func(t *testing.T) {
+			actualYAML, err := yaml.Marshal(config)
+			require.NoError(t, err)
+			require.YAMLEq(t, `
+proxy_url: "http://localhost:8080"
+follow_redirects: false
+enable_http2: false
+`, string(actualYAML))
+
+			// Unmarshalling the YAML should get the same struct in input.
+			actual := &HTTPClientConfig{}
+			require.NoError(t, yaml.Unmarshal(actualYAML, actual))
+			require.Equal(t, config, actual)
+		})
+
+		t.Run("JSON", func(t *testing.T) {
+			actualJSON, err := json.Marshal(config)
+
+			require.NoError(t, err)
+			require.JSONEq(t, `{
+				"proxy_url":"http://localhost:8080",
+				"tls_config":{"insecure_skip_verify":false},
+				"follow_redirects":false,
+				"enable_http2":false
+			}`, string(actualJSON))
+
+			// Unmarshalling the JSON should get the same struct in input.
+			actual := &HTTPClientConfig{}
+			require.NoError(t, json.Unmarshal(actualJSON, actual))
+			require.Equal(t, config, actual)
+		})
+	})
+
+	t.Run("with HTTP headers", func(t *testing.T) {
+		config := &HTTPClientConfig{
+			ProxyConfig: ProxyConfig{
+				ProxyURL: URL{proxyURL},
+			},
+			HTTPHeaders: &Headers{
+				Headers: map[string]Header{
+					"X-Test": {
+						Values: []string{"Value-1", "Value-2"},
+					},
+				},
+			},
+		}
+
+		actualYAML, err := yaml.Marshal(config)
+		require.NoError(t, err)
+		require.YAMLEq(t, `
+proxy_url: "http://localhost:8080"
+follow_redirects: false
+enable_http2: false
+http_headers:
+  X-Test:
+    values:
+    - Value-1
+    - Value-2
+`, string(actualYAML))
+
+		actualJSON, err := json.Marshal(config)
+		require.NoError(t, err)
+		require.JSONEq(t, `{
+			"proxy_url":"http://localhost:8080",
+			"tls_config":{"insecure_skip_verify":false},
+			"follow_redirects":false,
+			"enable_http2":false,
+			"http_headers":{"X-Test":{"values":["Value-1","Value-2"]}}
+		}`, string(actualJSON))
+	})
+}
+
 func TestOAuth2Proxy(t *testing.T) {
 	_, _, err := LoadHTTPConfigFile("testdata/http.conf.oauth2-proxy.good.yml")
 	if err != nil {
@@ -1799,7 +2159,8 @@ func TestModifyTLSCertificates(t *testing.T) {
 			CAFile:             ca,
 			CertFile:           cert,
 			KeyFile:            key,
-			InsecureSkipVerify: false},
+			InsecureSkipVerify: false,
+		},
 	}
 
 	var c *http.Client
@@ -1990,7 +2351,6 @@ no_proxy: promcon.io,cncf.io`, proxyServer.URL),
 
 			proxyFunc := proxyConfig.Proxy()
 			resultURL, err := proxyFunc(req)
-
 			if err != nil {
 				t.Fatalf("expected no error, but got: %v", err)
 				return
@@ -2019,4 +2379,64 @@ func readFile(t *testing.T, filename string) string {
 	}
 
 	return string(content)
+}
+
+func TestHeaders(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range map[string]string{
+			"One":   "value1",
+			"Two":   "value2",
+			"Three": "value3",
+		} {
+			if r.Header.Get(k) != v {
+				t.Errorf("expected %q, got %q", v, r.Header.Get(k))
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(ts.Close)
+
+	cfg, _, err := LoadHTTPConfigFile("testdata/http.conf.headers.good.yaml")
+	if err != nil {
+		t.Fatalf("Error loading HTTP client config: %v", err)
+	}
+	client, err := NewClientFromConfig(*cfg, "test")
+	if err != nil {
+		t.Fatalf("Error creating HTTP Client: %v", err)
+	}
+
+	_, err = client.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("can't fetch URL: %v", err)
+	}
+}
+
+func TestMultipleHeaders(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range map[string][]string{
+			"One":   {"value1a", "value1b", "value1c"},
+			"Two":   {"value2a", "value2b", "value2c"},
+			"Three": {"value3a", "value3b", "value3c"},
+		} {
+			if !reflect.DeepEqual(r.Header.Values(k), v) {
+				t.Errorf("expected %v, got %v", v, r.Header.Values(k))
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(ts.Close)
+
+	cfg, _, err := LoadHTTPConfigFile("testdata/http.conf.headers-multiple.good.yaml")
+	if err != nil {
+		t.Fatalf("Error loading HTTP client config: %v", err)
+	}
+	client, err := NewClientFromConfig(*cfg, "test")
+	if err != nil {
+		t.Fatalf("Error creating HTTP Client: %v", err)
+	}
+
+	_, err = client.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("can't fetch URL: %v", err)
+	}
 }

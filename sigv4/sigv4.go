@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
@@ -59,10 +61,16 @@ func NewSigV4RoundTripper(cfg *SigV4Config, next http.RoundTripper) (http.RoundT
 		creds = nil
 	}
 
+	useFIPSSTSEndpoint := endpoints.FIPSEndpointStateDisabled
+	if cfg.UseFIPSSTSEndpoint {
+		useFIPSSTSEndpoint = endpoints.FIPSEndpointStateEnabled
+	}
+
 	sess, err := session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
-			Region:      aws.String(cfg.Region),
-			Credentials: creds,
+			Region:          aws.String(cfg.Region),
+			Credentials:     creds,
+			UseFIPSEndpoint: useFIPSSTSEndpoint,
 		},
 		Profile: cfg.Profile,
 	})
@@ -102,11 +110,14 @@ func (rt *sigV4RoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 		buf.Reset()
 		rt.pool.Put(buf)
 	}()
-	if _, err := io.Copy(buf, req.Body); err != nil {
-		return nil, err
+
+	if req.Body != nil {
+		if _, err := io.Copy(buf, req.Body); err != nil {
+			return nil, err
+		}
+		// Close the original body since we don't need it anymore.
+		_ = req.Body.Close()
 	}
-	// Close the original body since we don't need it anymore.
-	_ = req.Body.Close()
 
 	// Ensure our seeker is back at the start of the buffer once we return.
 	var seeker io.ReadSeeker = bytes.NewReader(buf.Bytes())

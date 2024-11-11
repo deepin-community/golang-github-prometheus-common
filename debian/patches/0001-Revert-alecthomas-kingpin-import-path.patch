@@ -9,20 +9,33 @@ Newer versions of alecthomas/kingpin use a different import path. This patch
 can be dropped once the golang-gopkg-alecthomas-kingpin.v2-dev package is
 updated and provides the new import path.
 ---
- promlog/flag/flag.go | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ promlog/flag/flag.go  | 2 +-
+ promslog/flag/flag.go | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/promlog/flag/flag.go b/promlog/flag/flag.go
-index c25d818..ec55008 100644
+index e045b97..66fc778 100644
 --- a/promlog/flag/flag.go
 +++ b/promlog/flag/flag.go
-@@ -14,8 +14,8 @@
- package flag
- 
+@@ -16,7 +16,7 @@ package flag
  import (
--	kingpin "github.com/alecthomas/kingpin/v2"
- 	"github.com/prometheus/common/promlog"
-+	kingpin "gopkg.in/alecthomas/kingpin.v2"
- )
+ 	"strings"
  
- // LevelFlagName is the canonical flag name to configure the allowed log level
+-	kingpin "github.com/alecthomas/kingpin/v2"
++	kingpin "gopkg.in/alecthomas/kingpin.v2"
+ 
+ 	"github.com/prometheus/common/promlog"
+ )
+diff --git a/promslog/flag/flag.go b/promslog/flag/flag.go
+index 34edb6f..110fd62 100644
+--- a/promslog/flag/flag.go
++++ b/promslog/flag/flag.go
+@@ -22,7 +22,7 @@ package flag
+ import (
+ 	"strings"
+ 
+-	kingpin "github.com/alecthomas/kingpin/v2"
++	kingpin "gopkg.in/alecthomas/kingpin.v2"
+ 
+ 	"github.com/prometheus/common/promslog"
+ )

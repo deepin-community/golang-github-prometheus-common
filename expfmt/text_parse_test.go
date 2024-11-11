@@ -24,7 +24,7 @@ import (
 )
 
 func testTextParse(t testing.TB) {
-	var scenarios = []struct {
+	scenarios := []struct {
 		in  string
 		out []*dto.MetricFamily
 	}{
@@ -45,22 +45,22 @@ no_labels{} 3
 # HELP line for non-existing metric will be ignored.
 `,
 			out: []*dto.MetricFamily{
-				&dto.MetricFamily{
+				{
 					Name: proto.String("minimal_metric"),
 					Type: dto.MetricType_UNTYPED.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Untyped: &dto.Untyped{
 								Value: proto.Float64(1.234),
 							},
 						},
 					},
 				},
-				&dto.MetricFamily{
+				{
 					Name: proto.String("another_metric"),
 					Type: dto.MetricType_UNTYPED.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Untyped: &dto.Untyped{
 								Value: proto.Float64(-3e3),
 							},
@@ -68,11 +68,11 @@ no_labels{} 3
 						},
 					},
 				},
-				&dto.MetricFamily{
+				{
 					Name: proto.String("no_labels"),
 					Type: dto.MetricType_UNTYPED.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Untyped: &dto.Untyped{
 								Value: proto.Float64(3),
 							},
@@ -97,18 +97,18 @@ name2{labelname="val2"	,basename   =   "basevalue2"		} +Inf 54321
 name2{ labelname = "val1" , }-Inf
 `,
 			out: []*dto.MetricFamily{
-				&dto.MetricFamily{
+				{
 					Name: proto.String("name"),
 					Help: proto.String("two-line\n doc  str\\ing"),
 					Type: dto.MetricType_COUNTER.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("labelname"),
 									Value: proto.String("val1"),
 								},
-								&dto.LabelPair{
+								{
 									Name:  proto.String("basename"),
 									Value: proto.String("basevalue"),
 								},
@@ -117,13 +117,13 @@ name2{ labelname = "val1" , }-Inf
 								Value: proto.Float64(math.NaN()),
 							},
 						},
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("labelname"),
 									Value: proto.String("val2"),
 								},
-								&dto.LabelPair{
+								{
 									Name:  proto.String("basename"),
 									Value: proto.String("base\"v\\al\nue"),
 								},
@@ -135,18 +135,18 @@ name2{ labelname = "val1" , }-Inf
 						},
 					},
 				},
-				&dto.MetricFamily{
+				{
 					Name: proto.String("name2"),
 					Help: proto.String("doc str\"ing 2"),
 					Type: dto.MetricType_GAUGE.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("labelname"),
 									Value: proto.String("val2"),
 								},
-								&dto.LabelPair{
+								{
 									Name:  proto.String("basename"),
 									Value: proto.String("basevalue2"),
 								},
@@ -156,9 +156,9 @@ name2{ labelname = "val1" , }-Inf
 							},
 							TimestampMs: proto.Int64(54321),
 						},
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("labelname"),
 									Value: proto.String("val1"),
 								},
@@ -197,13 +197,13 @@ my_summary{n1="val3", quantile="0.2"} 4711
 # HELP my_summary 
 `,
 			out: []*dto.MetricFamily{
-				&dto.MetricFamily{
+				{
 					Name: proto.String("fake_sum"),
 					Type: dto.MetricType_UNTYPED.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n1"),
 									Value: proto.String("val1"),
 								},
@@ -214,11 +214,11 @@ my_summary{n1="val3", quantile="0.2"} 4711
 						},
 					},
 				},
-				&dto.MetricFamily{
+				{
 					Name: proto.String("decoy"),
 					Type: dto.MetricType_UNTYPED.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Untyped: &dto.Untyped{
 								Value: proto.Float64(-1),
 							},
@@ -226,13 +226,13 @@ my_summary{n1="val3", quantile="0.2"} 4711
 						},
 					},
 				},
-				&dto.MetricFamily{
+				{
 					Name: proto.String("my_summary"),
 					Type: dto.MetricType_SUMMARY.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n1"),
 									Value: proto.String("val1"),
 								},
@@ -241,11 +241,11 @@ my_summary{n1="val3", quantile="0.2"} 4711
 								SampleCount: proto.Uint64(42),
 								SampleSum:   proto.Float64(4711),
 								Quantile: []*dto.Quantile{
-									&dto.Quantile{
+									{
 										Quantile: proto.Float64(0.5),
 										Value:    proto.Float64(110),
 									},
-									&dto.Quantile{
+									{
 										Quantile: proto.Float64(0.9),
 										Value:    proto.Float64(140),
 									},
@@ -253,13 +253,13 @@ my_summary{n1="val3", quantile="0.2"} 4711
 							},
 							TimestampMs: proto.Int64(2),
 						},
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n2"),
 									Value: proto.String("val2"),
 								},
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n1"),
 									Value: proto.String("val1"),
 								},
@@ -267,7 +267,7 @@ my_summary{n1="val3", quantile="0.2"} 4711
 							Summary: &dto.Summary{
 								SampleCount: proto.Uint64(5),
 								Quantile: []*dto.Quantile{
-									&dto.Quantile{
+									{
 										Quantile: proto.Float64(-12.34),
 										Value:    proto.Float64(math.NaN()),
 									},
@@ -275,9 +275,9 @@ my_summary{n1="val3", quantile="0.2"} 4711
 							},
 							TimestampMs: proto.Int64(5),
 						},
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n1"),
 									Value: proto.String("val2"),
 								},
@@ -287,16 +287,16 @@ my_summary{n1="val3", quantile="0.2"} 4711
 							},
 							TimestampMs: proto.Int64(15),
 						},
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n1"),
 									Value: proto.String("val3"),
 								},
 							},
 							Summary: &dto.Summary{
 								Quantile: []*dto.Quantile{
-									&dto.Quantile{
+									{
 										Quantile: proto.Float64(0.2),
 										Value:    proto.Float64(4711),
 									},
@@ -305,17 +305,17 @@ my_summary{n1="val3", quantile="0.2"} 4711
 						},
 					},
 				},
-				&dto.MetricFamily{
+				{
 					Name: proto.String("another_summary"),
 					Type: dto.MetricType_SUMMARY.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Label: []*dto.LabelPair{
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n2"),
 									Value: proto.String("val2"),
 								},
-								&dto.LabelPair{
+								{
 									Name:  proto.String("n1"),
 									Value: proto.String("val1"),
 								},
@@ -323,7 +323,7 @@ my_summary{n1="val3", quantile="0.2"} 4711
 							Summary: &dto.Summary{
 								SampleCount: proto.Uint64(20),
 								Quantile: []*dto.Quantile{
-									&dto.Quantile{
+									{
 										Quantile: proto.Float64(0.3),
 										Value:    proto.Float64(-1.2),
 									},
@@ -353,32 +353,284 @@ request_duration_microseconds_count 2693
 					Help: proto.String("The response latency."),
 					Type: dto.MetricType_HISTOGRAM.Enum(),
 					Metric: []*dto.Metric{
-						&dto.Metric{
+						{
 							Histogram: &dto.Histogram{
 								SampleCount: proto.Uint64(2693),
 								SampleSum:   proto.Float64(1756047.3),
 								Bucket: []*dto.Bucket{
-									&dto.Bucket{
+									{
 										UpperBound:      proto.Float64(100),
 										CumulativeCount: proto.Uint64(123),
 									},
-									&dto.Bucket{
+									{
 										UpperBound:      proto.Float64(120),
 										CumulativeCount: proto.Uint64(412),
 									},
-									&dto.Bucket{
+									{
 										UpperBound:      proto.Float64(144),
 										CumulativeCount: proto.Uint64(592),
 									},
-									&dto.Bucket{
+									{
 										UpperBound:      proto.Float64(172.8),
 										CumulativeCount: proto.Uint64(1524),
 									},
-									&dto.Bucket{
+									{
 										UpperBound:      proto.Float64(math.Inf(+1)),
 										CumulativeCount: proto.Uint64(2693),
 									},
 								},
+							},
+						},
+					},
+				},
+			},
+		},
+		// 5: Quoted metric name and quoted label name with dots.
+		{
+			in: `
+# HELP "my.noncompliant.metric" help text
+# TYPE "my.noncompliant.metric" counter
+{"my.noncompliant.metric","label.name"="value"} 1
+`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("my.noncompliant.metric"),
+					Help: proto.String("help text"),
+					Type: dto.MetricType_COUNTER.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("label.name"),
+									Value: proto.String("value"),
+								},
+							},
+							Counter: &dto.Counter{
+								Value: proto.Float64(1),
+							},
+						},
+					},
+				},
+			},
+		},
+		// 6: Metric family with dots in name.
+		{
+			in: `
+# HELP "name.with.dots" boring help
+# TYPE "name.with.dots" counter
+{"name.with.dots",labelname="val1",basename="basevalue"} 42.0
+{"name.with.dots",labelname="val2",basename="basevalue"} 0.23 1234567890
+`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("name.with.dots"),
+					Help: proto.String("boring help"),
+					Type: dto.MetricType_COUNTER.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("labelname"),
+									Value: proto.String("val1"),
+								},
+								{
+									Name:  proto.String("basename"),
+									Value: proto.String("basevalue"),
+								},
+							},
+							Counter: &dto.Counter{
+								Value: proto.Float64(42),
+							},
+						},
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("labelname"),
+									Value: proto.String("val2"),
+								},
+								{
+									Name:  proto.String("basename"),
+									Value: proto.String("basevalue"),
+								},
+							},
+							Counter: &dto.Counter{
+								Value: proto.Float64(.23),
+							},
+							TimestampMs: proto.Int64(1234567890),
+						},
+					},
+				},
+			},
+		},
+		// 7: Metric family with dots in name, no labels.
+		{
+			in: `
+				# HELP "name.with.dots" boring help
+				# TYPE "name.with.dots" counter
+				{"name.with.dots"} 42.0
+				{"name.with.dots"} 0.23 1234567890
+				`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("name.with.dots"),
+					Help: proto.String("boring help"),
+					Type: dto.MetricType_COUNTER.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Counter: &dto.Counter{
+								Value: proto.Float64(42),
+							},
+						},
+						{
+							Counter: &dto.Counter{
+								Value: proto.Float64(.23),
+							},
+							TimestampMs: proto.Int64(1234567890),
+						},
+					},
+				},
+			},
+		},
+		// 8: Quoted metric name and quoted label names with dots and asterisks, special characters in label values.
+		{
+			in: `# HELP "gauge.name" gauge\ndoc\nstr\"ing
+# TYPE "gauge.name" gauge
+{"gauge.name","name.1"="val with\nnew line","name*2"="val with \\backslash and \"quotes\""} +Inf
+{"gauge.name","name.1"="Björn","name*2"="佖佥"} 3.14e+42
+`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("gauge.name"),
+					Help: proto.String("gauge\ndoc\nstr\"ing"),
+					Type: dto.MetricType_GAUGE.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("name.1"),
+									Value: proto.String("val with\nnew line"),
+								},
+								{
+									Name:  proto.String("name*2"),
+									Value: proto.String("val with \\backslash and \"quotes\""),
+								},
+							},
+							Gauge: &dto.Gauge{
+								Value: proto.Float64(math.Inf(+1)),
+							},
+						},
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("name.1"),
+									Value: proto.String("Björn"),
+								},
+								{
+									Name:  proto.String("name*2"),
+									Value: proto.String("佖佥"),
+								},
+							},
+							Gauge: &dto.Gauge{
+								Value: proto.Float64(3.14e42),
+							},
+						},
+					},
+				},
+			},
+		},
+		// 9: Various escaped special characters in metric and label names.
+		{
+			in: `
+# HELP "my\"noncompliant\nmetric\\" help text
+# TYPE "my\"noncompliant\nmetric\\" counter
+{"my\"noncompliant\nmetric\\","label\"name\n"="value"} 1
+`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("my\"noncompliant\nmetric\\"),
+					Help: proto.String("help text"),
+					Type: dto.MetricType_COUNTER.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("label\"name\n"),
+									Value: proto.String("value"),
+								},
+							},
+							Counter: &dto.Counter{
+								Value: proto.Float64(1),
+							},
+						},
+					},
+				},
+			},
+		},
+		// 10: Quoted metric name, not the first element in the label set.
+		{
+			in: `
+# HELP "my.noncompliant.metric" help text
+# TYPE "my.noncompliant.metric" counter
+{labelname="value", "my.noncompliant.metric"} 1
+`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("my.noncompliant.metric"),
+					Help: proto.String("help text"),
+					Type: dto.MetricType_COUNTER.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Label: []*dto.LabelPair{
+								{
+									Name:  proto.String("labelname"),
+									Value: proto.String("value"),
+								},
+							},
+							Counter: &dto.Counter{
+								Value: proto.Float64(1),
+							},
+						},
+					},
+				},
+			},
+		},
+		// 11: Multiple minimal metrics with quoted metric names.
+		{
+			in: `
+{"name.1"} 1
+{"name.2"} 1
+{"name.3"} 1
+`,
+			out: []*dto.MetricFamily{
+				{
+					Name: proto.String("name.1"),
+					Type: dto.MetricType_UNTYPED.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Untyped: &dto.Untyped{
+								Value: proto.Float64(1),
+							},
+						},
+					},
+				},
+				{
+					Name: proto.String("name.2"),
+					Type: dto.MetricType_UNTYPED.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Untyped: &dto.Untyped{
+								Value: proto.Float64(1),
+							},
+						},
+					},
+				},
+				{
+					Name: proto.String("name.3"),
+					Type: dto.MetricType_UNTYPED.Enum(),
+					Metric: []*dto.Metric{
+						{
+							Untyped: &dto.Untyped{
+								Value: proto.Float64(1),
 							},
 						},
 					},
@@ -429,7 +681,7 @@ func BenchmarkTextParse(b *testing.B) {
 }
 
 func testTextParseError(t testing.TB) {
-	var scenarios = []struct {
+	scenarios := []struct {
 		in  string
 		err string
 	}{
@@ -641,8 +893,48 @@ metric{quantile="0x1p-3"} 3.14
 			in:  `metric{label="bla",label="bla"} 3.14`,
 			err: "text format parsing error in line 1: duplicate label names for metric",
 		},
+		// 34: Multiple quoted metric names.
+		{
+			in:  `{"one.name","another.name"} 3.14`,
+			err: "text format parsing error in line 1: multiple metric names",
+		},
+		// 35: Invalid escape sequence in quoted metric name.
+		{
+			in:  `{"a\xc5z",label="bla"} 3.14`,
+			err: "text format parsing error in line 1: invalid escape sequence",
+		},
+		// 36: Unexpected end of quoted metric name.
+		{
+			in:  `{"metric.name".label="bla"} 3.14`,
+			err: "text format parsing error in line 1: unexpected end of metric name",
+		},
+		// 37: Invalid escape sequence in quoted metric name.
+		{
+			in: `
+# TYPE "metric.name\t" counter
+{"metric.name\t",label="bla"} 3.14
+`,
+			err: "text format parsing error in line 2: invalid escape sequence",
+		},
+		// 38: Newline in quoted metric name.
+		{
+			in: `
+# TYPE "metric
+name" counter
+{"metric
+name",label="bla"} 3.14
+`,
+			err: `text format parsing error in line 2: metric name "metric" contains unescaped new-line`,
+		},
+		// 39: Newline in quoted label name.
+		{
+			in: `
+{"metric.name","new
+line"="bla"} 3.14
+`,
+			err: `text format parsing error in line 2: label name "new" contains unescaped new-line`,
+		},
 	}
-
 	for i, scenario := range scenarios {
 		_, err := parser.TextToMetricFamilies(strings.NewReader(scenario.in))
 		if err == nil {
@@ -656,7 +948,6 @@ metric{quantile="0x1p-3"} 3.14
 			)
 		}
 	}
-
 }
 
 func TestTextParseError(t *testing.T) {
@@ -691,7 +982,7 @@ func TestTextParserStartOfLine(t *testing.T) {
 		if fn != nil {
 			t.Errorf("Unexpected non-nil function: %v", fn)
 		}
-		if p.err != in.err {
+		if p.err != nil && !errors.Is(p.err, in.err) {
 			t.Errorf("Unexpected error: %v, expected %v", p.err, in.err)
 		}
 	})
