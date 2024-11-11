@@ -15,8 +15,12 @@ package expfmt
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"io"
+	"math"
 	"net/http"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -84,7 +88,7 @@ mf2 4
 	for {
 		var smpls model.Vector
 		err := dec.Decode(&smpls)
-		if err == io.EOF {
+		if err != nil && errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -100,13 +104,13 @@ mf2 4
 }
 
 func TestProtoDecoder(t *testing.T) {
-
-	var testTime = model.Now()
+	testTime := model.Now()
 
 	scenarios := []struct {
-		in       string
-		expected model.Vector
-		fail     bool
+		in             string
+		expected       model.Vector
+		legacyNameFail bool
+		fail           bool
 	}{
 		{
 			in: "",
@@ -332,6 +336,30 @@ func TestProtoDecoder(t *testing.T) {
 				},
 			},
 		},
+		{
+			in:             "\xa8\x01\n\ngauge.name\x12\x11gauge\ndoc\nstr\"ing\x18\x01\"T\n\x1b\n\x06name.1\x12\x11val with\nnew line\n*\n\x06name*2\x12 val with \\backslash and \"quotes\"\x12\t\t\x00\x00\x00\x00\x00\x00\xf0\x7f\"/\n\x10\n\x06name.1\x12\x06Björn\n\x10\n\x06name*2\x12\x06佖佥\x12\t\t\xd1\xcfD\xb9\xd0\x05\xc2H",
+			legacyNameFail: true,
+			expected: model.Vector{
+				&model.Sample{
+					Metric: model.Metric{
+						model.MetricNameLabel: "gauge.name",
+						"name.1":              "val with\nnew line",
+						"name*2":              "val with \\backslash and \"quotes\"",
+					},
+					Value:     model.SampleValue(math.Inf(+1)),
+					Timestamp: testTime,
+				},
+				&model.Sample{
+					Metric: model.Metric{
+						model.MetricNameLabel: "gauge.name",
+						"name.1":              "Björn",
+						"name*2":              "佖佥",
+					},
+					Value:     3.14e42,
+					Timestamp: testTime,
+				},
+			},
+		},
 	}
 
 	for i, scenario := range scenarios {
@@ -344,10 +372,30 @@ func TestProtoDecoder(t *testing.T) {
 
 		var all model.Vector
 		for {
+			model.NameValidationScheme = model.LegacyValidation
 			var smpls model.Vector
 			err := dec.Decode(&smpls)
-			if err == io.EOF {
+			if err != nil && errors.Is(err, io.EOF) {
 				break
+			}
+			if scenario.legacyNameFail {
+				if err == nil {
+					t.Fatal("Expected error when decoding without UTF-8 support enabled but got none")
+				}
+				model.NameValidationScheme = model.UTF8Validation
+				dec = &SampleDecoder{
+					Dec: &protoDecoder{r: strings.NewReader(scenario.in)},
+					Opts: &DecodeOptions{
+						Timestamp: testTime,
+					},
+				}
+				err = dec.Decode(&smpls)
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				if err != nil {
+					t.Fatalf("Unexpected error when decoding with UTF-8 support: %v", err)
+				}
 			}
 			if scenario.fail {
 				if err == nil {
@@ -368,8 +416,33 @@ func TestProtoDecoder(t *testing.T) {
 	}
 }
 
+func TestProtoMultiMessageDecoder(t *testing.T) {
+	data, err := os.ReadFile("testdata/protobuf-multimessage")
+	if err != nil {
+		t.Fatalf("Reading file failed: %v", err)
+	}
+
+	buf := bytes.NewReader(data)
+	decoder := NewDecoder(buf, FmtProtoDelim)
+	var metrics []*dto.MetricFamily
+	for {
+		var mf dto.MetricFamily
+		if err := decoder.Decode(&mf); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			t.Fatalf("Unmarshalling failed: %v", err)
+		}
+		metrics = append(metrics, &mf)
+	}
+
+	if len(metrics) != 6 {
+		t.Fatalf("Expected %d metrics but got %d!", 6, len(metrics))
+	}
+}
+
 func testDiscriminatorHTTPHeader(t testing.TB) {
-	var scenarios = []struct {
+	scenarios := []struct {
 		input  map[string]string
 		output Format
 	}{
@@ -435,7 +508,7 @@ func TestExtractSamples(t *testing.T) {
 			Help: proto.String("Help for foo."),
 			Type: dto.MetricType_COUNTER.Enum(),
 			Metric: []*dto.Metric{
-				&dto.Metric{
+				{
 					Counter: &dto.Counter{
 						Value: proto.Float64(4711),
 					},
@@ -447,7 +520,7 @@ func TestExtractSamples(t *testing.T) {
 			Help: proto.String("Help for bar."),
 			Type: dto.MetricType_GAUGE.Enum(),
 			Metric: []*dto.Metric{
-				&dto.Metric{
+				{
 					Gauge: &dto.Gauge{
 						Value: proto.Float64(3.14),
 					},
@@ -459,7 +532,7 @@ func TestExtractSamples(t *testing.T) {
 			Help: proto.String("Help for bad."),
 			Type: dto.MetricType(42).Enum(),
 			Metric: []*dto.Metric{
-				&dto.Metric{
+				{
 					Gauge: &dto.Gauge{
 						Value: proto.Float64(2.7),
 					},
@@ -505,7 +578,7 @@ func TestTextDecoderWithBufioReader(t *testing.T) {
 	for {
 		var mf dto.MetricFamily
 		if err := dec.Decode(&mf); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			t.Fatalf("Unexpected error: %v", err)
